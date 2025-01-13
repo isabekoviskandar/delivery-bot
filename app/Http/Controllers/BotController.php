@@ -53,6 +53,7 @@ class BotController extends Controller
             ]);
         }
     }
+    
 
     private function validateEmail(string $email): bool
     {
@@ -170,6 +171,7 @@ class BotController extends Controller
 
     private function notifyAdmins(User $newUser): void
     {
+        
         $admins = User::where('role', 'admin')->get();
         $message = "New user registered:\nName: {$newUser->name}\nEmail: {$newUser->email}";
         
@@ -309,3 +311,4 @@ class BotController extends Controller
         $this->store($chatId, "List of all users:\n" . $userList);
     }
 }
+

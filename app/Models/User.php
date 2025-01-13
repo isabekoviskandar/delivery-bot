@@ -54,4 +54,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(Steps::class , 'user_id');
     }
+
+    public function order()
+    {
+        return $this->hasMany(Order::class , 'user_id');
+    }
 }

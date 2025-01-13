@@ -73,14 +73,21 @@
                 <a href="{{route('category.index')}}">
                   <i class="fas fa-desktop"></i>
                   <p>Categories</p>
-                  <span class="badge badge-success">4</span>
+                  <span class="badge badge-success"></span>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="/food">
                   <i class="fas fa-utensils"></i>
                   <p>Foods</p>
-                  <span class="badge badge-secondary">1</span>
+                  <span class="badge badge-secondary"></span>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="{{route('delivery.index')}}">
+                  <i class="fas fa-car"></i>
+                  <p>Delivery</p>
+                  <span class="badge badge-secondary"></span>
                 </a>
               </li>
             </ul>
@@ -88,36 +95,6 @@
         </div>
       </div>
     @yield('content')
-      <div class="main-panel">
-        <div class="main-header">
-          <div class="main-header-logo">
-            <!-- Logo Header -->
-            <div class="logo-header" data-background-color="dark">
-              <a href="index.html" class="logo">
-                <img
-                  src="assets/img/kaiadmin/logo_light.svg"
-                  alt="navbar brand"
-                  class="navbar-brand"
-                  height="20"
-                />
-              </a>
-              <div class="nav-toggle">
-                <button class="btn btn-toggle toggle-sidebar">
-                  <i class="gg-menu-right"></i>
-                </button>
-                <button class="btn btn-toggle sidenav-toggler">
-                  <i class="gg-menu-left"></i>
-                </button>
-              </div>
-              <button class="topbar-toggler more">
-                <i class="gg-more-vertical-alt"></i>
-              </button>
-            </div>
-          </div>
-        </div>
-
-
-      </div>
 
     </div>
     <script src="{{ asset('assets/js/core/jquery-3.7.1.min.js') }}"></script>
