@@ -35,9 +35,8 @@
     <link rel="stylesheet" href="{{ asset('assets/css/bootstrap.min.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/css/plugins.min.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/css/kaiadmin.min.css') }}" />
-
-
     <link rel="stylesheet" href="assets/css/demo.css" />
+    @vite('resources/js/app.js')
   </head>
   <body>
     <div class="wrapper">
@@ -87,6 +86,14 @@
                 <a href="{{route('delivery.index')}}">
                   <i class="fas fa-car"></i>
                   <p>Delivery</p>
+                  <span class="badge badge-secondary"></span>
+                </a>
+              </li>
+
+              <li class="nav-item">
+                <a href="/actions">
+                  <i class="fas fa-user"></i>
+                  <p>Actions</p>
                   <span class="badge badge-secondary"></span>
                 </a>
               </li>

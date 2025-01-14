@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\OrderEvent;
 use App\Mail\SendMessage;
+use App\Models\Order;
 use App\Models\Steps;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -39,7 +41,7 @@ class BotController extends Controller
             }
 
             $response = Http::post($this->telegramApiUrl . '/sendMessage', $payload);
-            
+
             if (!$response->successful()) {
                 Log::error('Telegram API error', [
                     'status' => $response->status(),
@@ -53,7 +55,7 @@ class BotController extends Controller
             ]);
         }
     }
-    
+
 
     private function validateEmail(string $email): bool
     {
@@ -95,7 +97,7 @@ class BotController extends Controller
                     return;
                 }
                 $confirmationCode = Str::random(6);
-                
+
                 try {
                     Mail::to($steps->email)->send(new SendMessage($steps->name, $confirmationCode));
                     $steps->update([
@@ -135,14 +137,14 @@ class BotController extends Controller
         try {
             $fileId = end($photo)['file_id'];
             $response = Http::get("{$this->telegramApiUrl}/getFile", ['file_id' => $fileId]);
-            
+
             if (!$response->successful()) {
                 throw new Exception('Failed to get file information from Telegram');
             }
 
             $filePath = $response->json('result.file_path');
             $imageContent = file_get_contents("https://api.telegram.org/file/bot" . env('TELEGRAM_BOT_TOKEN') . "/{$filePath}");
-            
+
             if (!$imageContent) {
                 throw new Exception('Failed to download image');
             }
@@ -162,7 +164,6 @@ class BotController extends Controller
             $this->notifyAdmins($user);
             $this->store($chatId, "Registration complete! Please wait for admin approval.");
             $steps->delete();
-
         } catch (Exception $e) {
             Log::error('Image upload failed', ['error' => $e->getMessage()]);
             $this->store($chatId, "Failed to process image. Please try again:");
@@ -171,10 +172,10 @@ class BotController extends Controller
 
     private function notifyAdmins(User $newUser): void
     {
-        
+
         $admins = User::where('role', 'admin')->get();
         $message = "New user registered:\nName: {$newUser->name}\nEmail: {$newUser->email}";
-        
+
         foreach ($admins as $admin) {
             $this->store($admin->chat_id, $message, [
                 'inline_keyboard' => [
@@ -223,27 +224,39 @@ class BotController extends Controller
 
     public function bot(Request $request)
     {
-        Log::info('Webhook received', $request->all());
-
         try {
             $data = $request->all();
-            
-            if (isset($data['callback_query'])) {
-                $this->handleCallbackQuery($data['callback_query']);
-                return response()->json(['status' => 'success']);
-            }
 
-            if (!isset($data['message'])) {
-                return response()->json(['status' => 'error', 'message' => 'Invalid request']);
-            }
+            // if (isset($data['callback_query'])) {
+            //     $this->handleCallbackQuery($data['callback_query']);
+            //     return response()->json(['status' => 'success']);
+            // }
 
-            $chatId = $data['message']['chat']['id'];
+            // if (!isset($data['message'])) {
+            //     return response()->json(['status' => 'error', 'message' => 'Invalid request']);
+            // }
+
+            $chatId = $data['message']['chat']['id'] ?? null;
             $text = $data['message']['text'] ?? null;
             $photo = $data['message']['photo'] ?? null;
 
             $steps = Steps::where('chat_id', $chatId)->first();
             $user = User::where('chat_id', $chatId)->first();
 
+            if (isset($data['callback_query'])) {
+                $callbackData = $data['callback_query']['data'];
+                $chatId = $data['callback_query']['message']['chat']['id'];
+
+                Log::info('Callback Data: ' . $callbackData);
+
+                if (str_starts_with($callbackData, 'accept_order_')) {
+                    $orderId = str_replace('accept_order_', '', $callbackData);
+                    $this->updateOrderStatus($orderId, 'accepted', $chatId);
+                } elseif (str_starts_with($callbackData, 'reject_order_')) {
+                    $orderId = str_replace('reject_order_', '', $callbackData);
+                    $this->updateOrderStatus($orderId, 'rejected', $chatId);
+                }
+            }
             if (!$steps && !$user) {
                 $this->handleNewUser($chatId, $text);
             } elseif ($steps) {
@@ -253,7 +266,6 @@ class BotController extends Controller
             }
 
             return response()->json(['status' => 'success']);
-
         } catch (Exception $e) {
             Log::error('Bot error', ['error' => $e->getMessage()]);
             return response()->json(['status' => 'error', 'message' => 'Internal server error'], 500);
@@ -278,7 +290,29 @@ class BotController extends Controller
             $this->store($chatId, "Please enter your username:");
         }
     }
+    private function updateOrderStatus($orderId, $status, $chatId)
+    {
+        $order = Order::find($orderId);
 
+        if ($order) {
+            $order->update(['status' => $status]);
+            event(new OrderEvent($order));
+
+            $newKeyboard = [
+                'inline_keyboard' => [
+                    [
+                        ['text' => "Order {$status}", 'callback_data' => 'disabled'],
+                    ],
+                ],
+            ];
+
+            Http::post("https://api.telegram.org/bot7819911021:AAHlBWvTFr7ewStAdPa0JMPFhN1zaMzAuV8/editMessageReplyMarkup", [
+                'chat_id' => $chatId,
+                'message_id' => $order->telegram_message_id,
+                'reply_markup' => json_encode($newKeyboard),
+            ]);
+        }
+    }
     private function handleExistingUser(User $user, string $chatId, ?string $text): void
     {
         if (!$user->status) {
@@ -304,11 +338,10 @@ class BotController extends Controller
     {
         $users = User::all();
         $userList = $users->map(function ($user) {
-            return "Name: {$user->name}, Email: {$user->email}, Status: " . 
-                   ($user->status ? 'Active' : 'Pending');
+            return "Name: {$user->name}, Email: {$user->email}, Status: " .
+                ($user->status ? 'Active' : 'Pending');
         })->join("\n");
 
         $this->store($chatId, "List of all users:\n" . $userList);
     }
 }
-
